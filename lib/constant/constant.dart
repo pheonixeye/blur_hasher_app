@@ -1,0 +1,4 @@
+enum NumberOfFiles {
+  one,
+  many,
+}
