@@ -2,6 +2,7 @@ import 'package:blur_hasher_app/modules/homepage/logic/bloc.dart';
 import 'package:blur_hasher_app/modules/homepage/ui/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,10 +20,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Blur Hasher',
-      home: HomePage(),
+      home: const HomePage(),
+      builder: EasyLoading.init(),
     );
   }
 }

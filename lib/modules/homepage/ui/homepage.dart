@@ -1,8 +1,15 @@
+// import 'package:blur_hasher_app/components/info_snackbar.dart';
+// import 'package:blur_hasher_app/constant/constant.dart';
+// import 'package:blur_hasher_app/modules/homepage/ui/widgets/files_number_card.dart';
+// import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:blur_hasher_app/components/info_snackbar.dart';
-import 'package:blur_hasher_app/constant/constant.dart';
-import 'package:blur_hasher_app/modules/homepage/ui/widgets/files_number_card.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:blurhash_dart/blurhash_dart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:image/image.dart' as img;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,10 +19,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final controller = TextEditingController();
+  final inputController = TextEditingController();
+  final outputController = TextEditingController();
+  int counter = 0;
   @override
   void dispose() {
-    controller.dispose();
+    inputController.dispose();
+    outputController.dispose();
     super.dispose();
   }
 
@@ -56,17 +66,37 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(18),
         children: [
           //select single or multiple files
-          const Padding(
-            padding: EdgeInsets.all(18),
+          // const Padding(
+          //   padding: EdgeInsets.all(18),
+          //   child: Row(
+          //     children: [
+          //       Text('One / Many Files :'),
+          //       FilesNumberCard(numberOfFiles: NumberOfFiles.one),
+          //       FilesNumberCard(numberOfFiles: NumberOfFiles.many),
+          //     ],
+          //   ),
+          // ),
+          //output folder path
+          Padding(
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                Text('One / Many Files :'),
-                FilesNumberCard(numberOfFiles: NumberOfFiles.one),
-                FilesNumberCard(numberOfFiles: NumberOfFiles.many),
+                const Text('Input Folder Path :'),
+                Flexible(
+                  child: Card(
+                    //TODO: add state to textfield
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextFormField(
+                        controller: inputController,
+                        enabled: true,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          //output folder path
           Padding(
             padding: const EdgeInsets.all(18),
             child: Row(
@@ -74,36 +104,14 @@ class _HomePageState extends State<HomePage> {
                 const Text('Output Folder Path :'),
                 Flexible(
                   child: Card(
-                    //TODO: add state to textfield
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: TextFormField(
-                        controller: controller,
-                        enabled: false,
+                        controller: outputController,
+                        enabled: true,
                       ),
                     ),
                   ),
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.browse_gallery),
-                  label: const Text('Browse'),
-                  onPressed: () async {
-                    final String? directory =
-                        await FilePicker.platform.getDirectoryPath(
-                      dialogTitle: 'Select output directory',
-                      lockParentWindow: true,
-                    );
-                    if (directory != null) {
-                      setState(() {
-                        controller.text = directory;
-                      });
-                    } else {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            infoSnackbar('No directory selected.'));
-                      }
-                    }
-                  },
                 ),
               ],
             ),
@@ -112,10 +120,58 @@ class _HomePageState extends State<HomePage> {
           Padding(
             padding: const EdgeInsets.all(18),
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () async {
+                await EasyLoading.show(
+                  status: 'LOADING...',
+                  indicator: CircularProgressIndicator.adaptive(
+                    value: counter.toDouble() / 100,
+                  ),
+                );
+                final inputPath = inputController.text;
+                final outputPath = outputController.text;
+                final Stream<FileSystemEntity> files =
+                    Directory(inputPath).list();
+                final jsonFile = File('$outputPath/result_test.json')
+                  ..createSync();
+                List<Map<String, dynamic>> info = [];
+                await for (FileSystemEntity e in files) {
+                  final data = File(e.path);
+                  final image = img.decodeJpg(await data.readAsBytes());
+                  final blurHash =
+                      BlurHash.encode(image!, numCompX: 4, numCompY: 3);
+
+                  info.add({
+                    'path': e.uri.toFilePath(windows: true),
+                    'hash': blurHash.hash,
+                  });
+
+                  setState(() {
+                    counter++;
+                  });
+                  print('done $counter');
+                }
+                await jsonFile.writeAsString(
+                  jsonEncode(info),
+                  mode: FileMode.append,
+                );
+                // files.map((e) async {}).toList();
+                print(files);
+                await EasyLoading.dismiss().then((value) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(infoSnackbar('Processing Complete...'));
+                  }
+                });
+              },
               icon: const Icon(Icons.file_copy),
-              label: const Text('Pick Image(s)'),
+              label: const Text('Process files'),
             ),
+          ),
+          const SizedBox(
+            height: 100,
+          ),
+          Center(
+            child: Text('done : $counter'),
           ),
         ],
       ),
